@@ -1,0 +1,33 @@
+[
+  {
+    "index": 0,
+    "timestamp": 1763989830.539427,
+    "data": {
+      "name": "GENESIS"
+    },
+    "hash": "0"
+  },
+  {
+    "index": 1,
+    "timestamp": 1763989830.539428,
+    "data": {
+      "title": "pham_sign_v4.py",
+      "author": "GNJz",
+      "timestamp": "2025-11-24 23:30:00",
+      "hash": "def456",
+      "cid": "QmTest2",
+      "description": "v4 with annotations",
+      "score": 0.9198,
+      "label": "A_HIGH",
+      "signals": {
+        "byte": 1.0,
+        "text": 1.0,
+        "ast": 0.9998,
+        "exec": 0.0
+      },
+      "raw_bytes": "776f726c64"
+    },
+    "previous_hash": "0",
+    "hash": "hash2"
+  }
+]
