@@ -202,7 +202,7 @@ hippo_dream.py (884 lines)
 3. **SubiculumFast** (line 113-148): 단기 통합
 4. **CortexRidge** (line 151-274): 장기 학습
 5. **Dream Functions** (line 304-440): 공고화
-6. **Main Simulation** (line 442-884): 전체 흐름
+6. **Main Simulation** (line 442-884): 전체
 
 ---
 
