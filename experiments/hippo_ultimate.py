@@ -56,34 +56,89 @@ from v4_event import CONFIG, HHSomaQuick, SynapseCore
 # ======================================================================
 class STDPSynapse(SynapseCore):
     """
-    STDP 학습 + Sleep 강화 기능
+    [Spike-Timing-Dependent Plasticity + Sleep Consolidation]
+    
+    📚 **Biological Background**:
+    - STDP (Bi & Poo, 1998): 스파이크 타이밍에 따른 시냅스 가소성
+    - Pre → Post (순차 발화): LTP (Long-Term Potentiation, 시냅스 강화)
+    - Post → Pre (역순 발화): LTD (Long-Term Depression, 시냅스 약화)
+    
+    🧮 **Mathematical Formula**:
+    
+    LTP (Δt > 0, Pre before Post):
+        ΔW = A₊ · exp(-Δt / τ₊)
+        where: A₊ = 0.15, τ₊ = 10.0 ms
+    
+    LTD (Δt < 0, Post before Pre):
+        ΔW = -A₋ · exp(Δt / τ₋)
+        where: A₋ = 0.05, τ₋ = 10.0 ms
+    
+    Sleep Consolidation:
+        W_new = W_old + α
+        where: α = 0.05 (consolidation factor)
+    
+    🎯 **Key Parameters**:
+    - weight: 시냅스 가중치 (0.1 ~ 50.0)
+    - Q_max: 최대 시냅스 자원 (50.0)
+    - tau_ms: 시냅스 전달 시간 상수 (2.0 ms)
+    - STDP window: ±20 ms
     """
     def __init__(self, pre, post, delay_ms=1.5, Q_max=50.0, tau_ms=2.0):
         super().__init__(pre.soma, post.soma, delay_ms=delay_ms, Q_max=Q_max, tau_ms=tau_ms)
         self.pre_neuron = pre
         self.post_neuron = post
-        self.weight = 1.0
-        self.last_pre_time = -100.0
-        self.last_post_time = -100.0
-        self.replay_count = 0
+        self.weight = 1.0  # 초기 가중치
+        self.last_pre_time = -100.0  # 마지막 pre-synaptic spike 시간
+        self.last_post_time = -100.0  # 마지막 post-synaptic spike 시간
+        self.replay_count = 0  # Sleep replay 횟수
 
     def on_pre_spike(self, t, Ca, R, ATP, dphi):
+        """
+        Pre-synaptic spike 발생 시 호출
+        
+        📊 **LTD Check** (Post가 Pre보다 먼저 발화했는지):
+        - dt_stdp = t_pre - t_post
+        - If 0 < dt_stdp < 20ms: LTD 적용 (가중치 감소)
+        - ΔW = -0.05 · exp(-dt_stdp / 10.0)
+        """
         self.last_pre_time = t
-        dt_stdp = t - self.last_post_time
+        dt_stdp = t - self.last_post_time  # Post의 마지막 발화로부터 경과 시간
+        
         if 0 < dt_stdp < 20.0:
-            # LTD
+            # LTD (Long-Term Depression): Post가 Pre보다 먼저 발화 → 약화
             self.weight = max(0.1, self.weight - 0.05 * np.exp(-dt_stdp/10.0))
+        
+        # 시냅스 전류 전달 (가중치 적용)
         super().on_pre_spike(t, Ca, R * self.weight, ATP, dphi)
 
     def on_post_spike(self, t):
+        """
+        Post-synaptic spike 발생 시 호출
+        
+        📊 **LTP Check** (Pre가 Post보다 먼저 발화했는지):
+        - dt = t_post - t_pre
+        - If 0 < dt < 20ms: LTP 적용 (가중치 증가)
+        - ΔW = +0.15 · exp(-dt / 10.0)
+        """
         self.last_post_time = t
-        dt = t - self.last_pre_time
+        dt = t - self.last_pre_time  # Pre의 마지막 발화로부터 경과 시간
+        
         if 0 < dt < 20.0:
-            # LTP
+            # LTP (Long-Term Potentiation): Pre가 Post보다 먼저 발화 → 강화
             self.weight = min(50.0, self.weight + 0.15 * np.exp(-dt/10.0))
 
     def consolidate(self, factor=0.05):
-        """Sleep 중 시냅스 강화"""
+        """
+        Sleep 중 시냅스 강화 (Memory Consolidation)
+        
+        📚 **Biological Basis**:
+        - Buzsáki (1986): Sharp-wave ripples during sleep
+        - Wilson & McNaughton (1994): Replay of waking activity
+        - 자주 활성화된 시냅스가 더 많이 강화됨
+        
+        🧮 **Formula**:
+        W_new = min(50.0, W_old + α)
+        """
         self.weight = min(50.0, self.weight + factor)
         self.replay_count += 1
 
@@ -92,15 +147,46 @@ class STDPSynapse(SynapseCore):
 # ======================================================================
 class DGNeuron:
     """
-    고 역치, 희소 활성화 (Pattern Separation)
+    [Dentate Gyrus: Pattern Separation through Sparse Coding]
+    
+    📚 **Biological Function**:
+    - 패턴 분리 (Pattern Separation): 유사한 입력을 구별 가능하게 변환
+    - 희소 코딩 (Sparse Coding): 전체 뉴런 중 2~5%만 활성화
+    - 높은 역치 (High Threshold): 강한 입력에만 반응
+    
+    🧮 **Activation Rule**:
+    
+    DG 뉴런 발화 조건:
+        I_ext > θ_DG · I_base
+        where:
+            θ_DG = 0.8 (activation threshold, 일반 뉴런의 0.5보다 높음)
+            I_base = 300.0 μA (기준 전류)
+    
+    즉, I_ext > 240 μA 일 때만 발화
+    
+    📊 **Sparse Coding**:
+    입력 패턴 → DG → 2~5% 뉴런만 활성화
+    
+    예시:
+    - 입력: "CAT" (많은 뉴런 활성화)
+    - DG 출력: 뉴런 [0, 1]만 활성화 (전체의 2%)
+    
+    🎯 **Why High Threshold?**:
+    - 노이즈 억제: 약한 신호는 무시
+    - 경쟁적 선택: 강한 입력만 통과
+    - 에너지 효율: 적은 뉴런으로 정보 표현
+    
+    🔬 **Research**:
+    - Leutgeb et al. (2007): DG는 유사한 환경도 구별
+    - Neunuebel & Knierim (2014): DG의 희소 코딩
     """
     def __init__(self, name, activation_threshold=0.8):
         self.name = name
-        self.soma = HHSomaQuick(CONFIG["HH"])
-        self.activation_threshold = activation_threshold  # 높은 역치
-        self.S, self.PTP = 0.0, 1.0
-        self.outgoing_synapses = []
-        self.incoming_synapses = []
+        self.soma = HHSomaQuick(CONFIG["HH"])  # Hodgkin-Huxley 뉴런 모델
+        self.activation_threshold = activation_threshold  # 높은 역치 (0.8)
+        self.S, self.PTP = 0.0, 1.0  # Short-term plasticity variables
+        self.outgoing_synapses = []  # DG → CA3 연결
+        self.incoming_synapses = []  # EC → DG 연결
 
     def step(self, dt, I_ext=0.0, t=0.0):
         # 역치 이상일 때만 활성화
@@ -129,15 +215,56 @@ class DGNeuron:
 # ======================================================================
 class CA3Neuron:
     """
-    재귀 연결 + 연상 기억
+    [CA3: Associative Memory with Recurrent Connections]
+    
+    📚 **Biological Function**:
+    1. **패턴 완성 (Pattern Completion)**:
+       - 부분 입력 → 완전한 기억 복원
+       - 예: "CA_" → "CAT" 전체 재생
+    
+    2. **연상 기억 (Associative Memory)**:
+       - 하나의 단서 → 관련 모든 기억 활성화
+       - 예: "A" → ANT, ARC, AIM 동시 활성화
+    
+    3. **시퀀스 학습 (Sequence Memory)**:
+       - 시간적 순서 기억: A → B → C
+       - STDP를 통한 순차적 연결 강화
+    
+    🧮 **Network Structure**:
+    
+    CA3 Recurrent Network:
+        W_ij: CA3_i → CA3_j 시냅스 가중치
+        
+    Activation:
+        h_i(t+1) = f(Σ W_ij · h_j(t) + I_ext)
+        where f = HH neuron dynamics
+    
+    Pattern Completion:
+        입력: [1, 0, 0]  (부분 패턴)
+        재귀 연결 후: [1, 1, 1]  (완전한 패턴)
+    
+    📊 **Key Properties**:
+    - Auto-association: 자기 자신과 연결
+    - Hetero-association: 다른 패턴과 연결
+    - Attractor dynamics: 안정 상태로 수렴
+    
+    🎯 **Why Recurrent?**:
+    - 불완전한 입력 복원
+    - 잡음 제거
+    - 시간적 연속성 표현
+    
+    🔬 **Research**:
+    - Marr (1971): CA3 auto-associative memory 이론
+    - McNaughton & Morris (1987): CA3 recurrent collaterals
+    - Guzman et al. (2016): CA3 sequence learning
     """
     def __init__(self, name):
         self.name = name
-        self.soma = HHSomaQuick(CONFIG["HH"])
-        self.S, self.PTP = 0.0, 1.0
-        self.outgoing_synapses = []
-        self.incoming_synapses = []
-        self.wake_spike_count = 0
+        self.soma = HHSomaQuick(CONFIG["HH"])  # Hodgkin-Huxley 뉴런
+        self.S, self.PTP = 0.0, 1.0  # Short-term & Post-tetanic plasticity
+        self.outgoing_synapses = []  # CA3 → CA3 (recurrent), CA3 → CA1
+        self.incoming_synapses = []  # DG → CA3, CA3 → CA3 (recurrent)
+        self.wake_spike_count = 0  # Wake 중 발화 횟수 (빈도 추적)
 
     def step(self, dt, I_ext=0.0, t=0.0):
         self.soma.step(dt, I_ext)
@@ -162,16 +289,52 @@ class CA3Neuron:
 # ======================================================================
 class CA1TimeCell:
     """
-    특정 시간 간격 후 발화 (Temporal Encoding)
+    [CA1 Time Cells: Temporal Sequence Encoding]
+    
+    📚 **Biological Discovery**:
+    - Eichenbaum (2014): CA1 time cells encode temporal intervals
+    - Pastalkova et al. (2008): Sequential firing during delay periods
+    - CA1은 "언제" 일어났는지를 부호화
+    
+    🧮 **Temporal Encoding**:
+    
+    Time Cell i fires at delay Δt_i:
+        S_i(t) = 1 if |t - t_trigger - Δt_i| < ε
+        S_i(t) = 0 otherwise
+    
+    where:
+        t_trigger: CA3 입력이 발생한 시간
+        Δt_i: Time cell i의 고유한 지연 시간
+        ε: 허용 오차 (2 ms)
+    
+    📊 **Example**:
+    시퀀스: A → B → C
+    
+    t=0ms: A 발생 → CA1_A 트리거
+    t=10ms: CA1_A 발화 (Δt=10ms)
+    t=20ms: B 발생 → CA1_B 트리거  
+    t=30ms: CA1_B 발화 (Δt=10ms)
+    
+    → 시간 간격 정보 부호화!
+    
+    🎯 **Key Concept**:
+    - "무엇"이 아닌 "언제"를 기억
+    - 이벤트 간 시간 간격 표현
+    - 시퀀스의 타이밍 정보 저장
+    
+    🔬 **Application**:
+    - 에피소드 기억: "점심 먹고 30분 후에..."
+    - 시간 예측: "다음 이벤트는 10초 후"
+    - 시간적 맥락: "아침에 본 것 vs 저녁에 본 것"
     """
     def __init__(self, delay_ms, name):
-        self.delay_ms = delay_ms
+        self.delay_ms = delay_ms  # 이 time cell의 고유 지연 시간
         self.name = name
         self.soma = HHSomaQuick(CONFIG["HH"])
-        self.trigger_time = None
+        self.trigger_time = None  # CA3 입력이 발생한 시간 (트리거)
         self.S, self.PTP = 0.0, 1.0
-        self.outgoing_synapses = []
-        self.incoming_synapses = []
+        self.outgoing_synapses = []  # CA1 → Subiculum
+        self.incoming_synapses = []  # CA3 → CA1
     
     def trigger(self, t):
         """CA3에서 신호 받으면 타이머 시작"""
@@ -204,13 +367,60 @@ class CA1TimeCell:
 # ======================================================================
 class CA1NoveltyDetector:
     """
-    새로운 패턴 감지
+    [CA1 Novelty Detection: Comparator Function]
+    
+    📚 **Biological Function**:
+    - Vinogradova (2001): CA1 as novelty detector
+    - Lisman & Grace (2005): CA1 compares expected vs. actual
+    - CA1은 "예상"과 "실제"를 비교하는 비교기 (Comparator)
+    
+    🧮 **Novelty Signal**:
+    
+    Novelty Score:
+        N(x) = 1 - Match(x, Memory)
+        
+        where:
+            Match(x, M) = 1 if x ∈ M (familiar)
+            Match(x, M) = 0 if x ∉ M (novel)
+    
+    Output:
+        If N(x) > θ_novelty: Fire (Novel!)
+        If N(x) ≤ θ_novelty: Silent (Familiar)
+        
+        where θ_novelty = 0.5
+    
+    📊 **Example**:
+    
+    학습 후 Memory = {CAT, DOG}
+    
+    Test "CAT":
+        → Match = 1 (in memory)
+        → N = 1 - 1 = 0.0
+        → No firing (Familiar ✓)
+    
+    Test "BAT":
+        → Match = 0 (not in memory)
+        → N = 1 - 0 = 1.0
+        → Firing! (Novel 🆕)
+    
+    🎯 **Why Important?**:
+    - 탐색 vs 활용: 새로운 것 → 더 조사
+    - 학습 신호: 새로운 것 → 주의 집중
+    - 기억 갱신: 새로운 것 → 기억 저장
+    
+    🧠 **Brain Circuit**:
+    CA3 (prediction) → CA1 ← EC (actual input)
+    → CA1 비교 → 불일치 → Novelty signal
+    
+    🔬 **Research**:
+    - Kumaran & Maguire (2007): CA1 mismatch detection
+    - Duncan et al. (2012): CA1 novelty response
     """
     def __init__(self, name):
         self.name = name
         self.soma = HHSomaQuick(CONFIG["HH"])
-        self.expected_patterns = []
-        self.novelty_threshold = 0.5
+        self.expected_patterns = []  # 학습된 패턴 리스트 (기억)
+        self.novelty_threshold = 0.5  # 새로움 역치
         self.S, self.PTP = 0.0, 1.0
         self.outgoing_synapses = []
         self.incoming_synapses = []
@@ -251,13 +461,62 @@ class CA1NoveltyDetector:
 # ======================================================================
 class SubiculumGate:
     """
-    맥락 기반 출력 제어
+    [Subiculum: Context-Dependent Output Gating]
+    
+    📚 **Biological Function**:
+    - O'Mara et al. (2001): Subiculum as output gateway
+    - Cembrowski et al. (2018): Context-specific firing
+    - 해마와 대뇌피질 사이의 "게이트키퍼"
+    
+    🧮 **Gating Function**:
+    
+    Context Relevance:
+        R(word | context) = 1 if word ∈ Context_Memory[context]
+        R(word | context) = 0 otherwise
+    
+    Output:
+        O(word) = R(word | context) × Activity(word)
+    
+    📊 **Example**:
+    
+    Context Memory:
+        "animal" → {CAT, DOG, BAT}
+        "object" → {CAR, TREE, BOOK}
+    
+    Scenario 1:
+        Current context = "animal"
+        Input: CAT → R=1.0 → Pass ✓
+        Input: CAR → R=0.0 → Block ✗
+    
+    Scenario 2:
+        Current context = "object"  
+        Input: CAT → R=0.0 → Block ✗
+        Input: CAR → R=1.0 → Pass ✓
+    
+    🎯 **Why Gating?**:
+    - 맥락 적합성: 상황에 맞는 출력만 전달
+    - 간섭 방지: 무관한 기억 억제
+    - 효율성: 관련 정보만 피질로 전송
+    
+    🧠 **Brain Circuit**:
+    CA1 → Subiculum → Entorhinal Cortex → Neocortex
+              ↑
+         (context signal)
+    
+    🔬 **Research**:
+    - Witter (2006): Subiculum as output hub
+    - Kim & Spruston (2012): Subiculum burst firing
+    
+    💡 **Real-World Analogy**:
+    "식당" 맥락:
+        - "메뉴"라는 단어 → Pass (관련)
+        - "미적분"이라는 단어 → Block (무관)
     """
     def __init__(self, name):
         self.name = name
         self.soma = HHSomaQuick(CONFIG["HH"])
-        self.context_memory = {}
-        self.current_context = None
+        self.context_memory = {}  # {context: [related_words]} 맥락별 연관 단어
+        self.current_context = None  # 현재 맥락
         self.S, self.PTP = 0.0, 1.0
         self.outgoing_synapses = []
         self.incoming_synapses = []
