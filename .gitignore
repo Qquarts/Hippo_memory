@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+*.env
+
+# Output files
+*.png
+*.jpg
+*.pdf
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Data
+data/
+*.h5
+*.hdf5
+
+# Blockchain
+pham_chain_*.json
+
