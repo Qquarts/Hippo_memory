@@ -6,8 +6,9 @@
 
 **이름**: Hippocampus Memory System  
 **버전**: v2.0.0  
-**릴리즈 날짜**: 2024년 11월 26일  
+**릴리즈 날짜**: 2025년 11월 26일  
 **개발 기간**: 1일  
+**IPFS CID**: `QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`  
 **개발자**: 윤재진 (Jaejin Yoon)  
 **저장소**: https://github.com/Qquarts/Hippo_memory  
 **라이선스**: MIT  

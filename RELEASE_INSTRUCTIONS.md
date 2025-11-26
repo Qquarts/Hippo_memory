@@ -219,9 +219,10 @@ python run_all_experiments.py --quick
 - SHA256: `a1ff887c2d58fea6881f99bbf8f04db6e45728970db29384dec3773deeae5a11`
 
 ### IPFS (Decentralized, Permanent)
-- CID: `[IPFS_CID_HERE]`
-- Gateway: `https://ipfs.io/ipfs/[IPFS_CID_HERE]`
-- w3s Gateway: `https://[IPFS_CID_HERE].ipfs.w3s.link`
+- CID: `QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`
+- Gateway: `https://ipfs.io/ipfs/QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`
+- Cloudflare: `https://cloudflare-ipfs.com/ipfs/QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`
+- Pinata: `https://gateway.pinata.cloud/ipfs/QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`
 
 ### Clone Repository
 ```bash

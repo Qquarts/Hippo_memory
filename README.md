@@ -34,11 +34,38 @@ Input → EC → DG → CA3 → CA1 → Subiculum → Output
 
 ## 🚀 Quick Start
 
-### Installation
+### Download
 
+#### Option 1: GitHub Release (Recommended)
+```bash
+# Download latest release
+wget https://github.com/Qquarts/Hippo_memory/releases/download/v2.0.0/hippo_memory_v2.0.0.zip
+unzip hippo_memory_v2.0.0.zip
+cd hippo_memory_v2.0.0
+```
+
+#### Option 2: IPFS (Decentralized)
+```bash
+# Download from IPFS
+ipfs get QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs -o hippo_memory_v2.0.0.zip
+
+# Or via IPFS gateway
+wget https://ipfs.io/ipfs/QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs -O hippo_memory_v2.0.0.zip
+```
+
+**IPFS CID:** `QmcHeZnUHr1jYpSmwdTNjwYPdiSbqNorqJHs4mnqS8NuVs`  
+**SHA256:** `31acd4794c81fab2c1d9c6d4d30be1665a25b46fbd3f208379df0c6db8606ba3`
+
+#### Option 3: Git Clone
 ```bash
 git clone https://github.com/Qquarts/Hippo_memory.git
 cd Hippo_memory
+git checkout v2.0.0
+```
+
+### Installation
+
+```bash
 pip install -r requirements.txt
 ```
 
